@@ -13,7 +13,7 @@ INCLUDES = -I/usr/local/include
 LFLAGS = -L/usr/local/lib
 
 # define any libraries to link into executable
-LIBS = -ldill -ldsock
+LIBS = -ldill -ldsock -lpthread
 
 # subdirectories
 SOURCES = $(wildcard *.c)
