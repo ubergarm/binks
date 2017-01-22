@@ -1,4 +1,5 @@
 /*
+
   Copyright (c) 2016 Martin Sustrik
   Copyright (c) 2017 John W. Leimgruber III
 
@@ -31,6 +32,26 @@
 
 #include "dsock.h"
 
+coroutine void dialogue(int s) {
+    int rc;
+    // fake a response
+    rc = bsend(s, "HTTP/1.1 200 OK\r\n", 17, -1);
+    if(rc != 0) goto cleanup;
+    rc = bsend(s, "Content-Type: text/plain\r\n", 26, -1);
+    if(rc != 0) goto cleanup;
+    rc = bsend(s, "Content-Length: 11\r\n", 20, -1);
+    if(rc != 0) goto cleanup;
+    rc = bsend(s, "Connection: close\r\n", 19, -1);
+    if(rc != 0) goto cleanup;
+    rc = bsend(s, "\r\n", 2, -1);
+    if(rc != 0) goto cleanup;
+    rc = bsend(s, "hello world", 11, -1);
+    if(rc != 0) goto cleanup;
+cleanup:
+    rc = hclose(s);
+    assert(rc == 0);
+}
+
 int main(int argc, char *argv[]) {
 
     int port = 5555;
@@ -49,24 +70,8 @@ int main(int argc, char *argv[]) {
     while(1) {
         int s = tcp_accept(ls, NULL, -1);
         assert(s >= 0);
-
-        // fake a response
-        rc = bsend(s, "HTTP/1.1 200 OK\r\n", 17, -1);
-        if(rc != 0) goto cleanup;
-        rc = bsend(s, "Content-Type: text/plain\r\n", 26, -1);
-        if(rc != 0) goto cleanup;
-        rc = bsend(s, "Content-Length: 11\r\n", 20, -1);
-        if(rc != 0) goto cleanup;
-        rc = bsend(s, "Connection: close\r\n", 19, -1);
-        if(rc != 0) goto cleanup;
-        rc = bsend(s, "\r\n", 2, -1);
-        if(rc != 0) goto cleanup;
-        rc = bsend(s, "hello world", 11, -1);
-        if(rc != 0) goto cleanup;
-
-cleanup:
-        rc = hclose(s);
-        assert(rc == 0);
+        int cr = go(dialogue(s));
+        assert(cr >= 0);
     }
 }
 
