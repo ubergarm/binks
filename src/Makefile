@@ -6,28 +6,23 @@ CC = gcc
 #  -Wall turns on most, but not all, compiler warnings
 CFLAGS  = -g -Wall
 
-# define any directories containing header files other than /usr/include
-#
+# define additional directories containing header files
 INCLUDES = -I/usr/local/include
 
-# define library paths in addition to /usr/lib
-#   if I wanted to include libraries not in /usr/lib I'd specify
-#   their path using -Lpath, something like:
+# define additional library paths
 LFLAGS = -L/usr/local/lib
 
-# define any libraries to link into executable:
-#   if I want to link in libraries (libx.so or libx.a) I use the -llibname 
-#   option, something like (this will link in libmylib.so and libm.so:
+# define any libraries to link into executable
 LIBS = -ldill -ldsock
 
-# the build target executable:
-TARGET = sequential
+# subdirectories
+SOURCES = $(wildcard *.c)
 
-all: $(TARGET)
+PROGS = $(patsubst %.c,%,$(SOURCES))
 
-$(TARGET): $(TARGET).c
-	$(CC) $(CFLAGS) $(INCLUDES) -o $(TARGET) $(TARGET).c $(LFLAGS) $(LIBS)
+all: $(PROGS)
 
-
+%: %.c
+	$(CC) -o $@ $< $(CFLAGS) $(INCLUDES) $(LFLAGS) $(LIBS)
 clean:
-	$(RM) $(TARGET)
+	$(RM) $(PROGS)
