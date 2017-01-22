@@ -4,7 +4,7 @@ CC = gcc
 # compiler flags:
 #  -g    adds debugging information to the executable file
 #  -Wall turns on most, but not all, compiler warnings
-CFLAGS  = -g -Wall
+CFLAGS  = -g -Wall -static
 
 # define additional directories containing header files
 INCLUDES = -I/usr/local/include
@@ -13,7 +13,7 @@ INCLUDES = -I/usr/local/include
 LFLAGS = -L/usr/local/lib
 
 # define any libraries to link into executable
-LIBS = -ldill -ldsock
+LIBS = -ldill -ldsock -lpthread
 
 # subdirectories
 SOURCES = $(wildcard *.c)

@@ -34,29 +34,36 @@
 #include "dsock.h"
 
 coroutine void dialogue(int s) {
+
+    int64_t deadline;
     int rc;
-    // grab some bytes
+    // read up to xxx bytes or return after xxx msec
+    deadline = now() + 1000;
     char inbuf[41];
-    rc = brecv(s, inbuf, sizeof(inbuf), -1);
+    rc = brecv(s, inbuf, sizeof(inbuf), deadline);
     inbuf[40] = 0;
     if (errno != 0) {
         printf("errno: (%d): %s\n", errno, strerror(errno));
     }
     printf("%s\n", inbuf);
 
-    // fake a response
-    rc = bsend(s, "HTTP/1.1 200 OK\r\n", 17, -1);
+
+
+    // fake a response in the next xxx msec or die trying
+    deadline = now() + 1000;
+    rc = bsend(s, "HTTP/1.1 200 OK\r\n", 17, deadline);
     if(rc != 0) goto cleanup;
-    rc = bsend(s, "Content-Type: text/plain\r\n", 26, -1);
+    rc = bsend(s, "Content-Type: text/plain\r\n", 26, deadline);
     if(rc != 0) goto cleanup;
-    rc = bsend(s, "Content-Length: 11\r\n", 20, -1);
+    rc = bsend(s, "Content-Length: 11\r\n", 20, deadline);
     if(rc != 0) goto cleanup;
-    rc = bsend(s, "Connection: close\r\n", 19, -1);
+    rc = bsend(s, "Connection: close\r\n", 19, deadline);
     if(rc != 0) goto cleanup;
-    rc = bsend(s, "\r\n", 2, -1);
+    rc = bsend(s, "\r\n", 2, deadline);
     if(rc != 0) goto cleanup;
-    rc = bsend(s, "hello world", 11, -1);
+    rc = bsend(s, "hello world", 11, deadline);
     if(rc != 0) goto cleanup;
+
 cleanup:
     rc = hclose(s);
     assert(rc == 0);
@@ -77,13 +84,13 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    unsigned int cnt = 0;
+    unsigned int cnt=0;
     while(1) {
         int s = tcp_accept(ls, NULL, -1);
         assert(s >= 0);
         int cr = go(dialogue(s));
         assert(cr >= 0);
-        printf("Loop: %d, socket: %d\n", ++cnt, s);
+        printf("Loop: %d, s=%d \n", ++cnt, s);
     }
 }
 

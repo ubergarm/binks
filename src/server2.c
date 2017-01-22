@@ -50,6 +50,12 @@ int main(int argc, char *argv[]) {
         int s = tcp_accept(ls, NULL, -1);
         assert(s >= 0);
 
+        // grab some bytes
+        char inbuf[16];
+        rc = brecv(s, inbuf, sizeof(inbuf), -1);
+        inbuf[15] = 0;
+        printf("got: %s\n", inbuf);
+
         // fake a response
         rc = bsend(s, "HTTP/1.1 200 OK\r\n", 17, -1);
         if(rc != 0) goto cleanup;
