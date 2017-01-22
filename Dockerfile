@@ -31,7 +31,6 @@ RUN cd /usr/local/src && \
     make -j8 CFLAGS=-I/usr/local/include LDFLAGS=-ldill && \
     make install
 
-    #make -j8 CFLAGS=-I/usr/local/include LDFLAGS=-ldill && \
 # install picohttpparser
 RUN cd /usr/local/src && \
     git clone https://github.com/h2o/picohttpparser.git && \
