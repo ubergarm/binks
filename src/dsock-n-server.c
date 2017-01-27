@@ -43,14 +43,21 @@
     } while(0)
 
 coroutine void worker(int ch) {
+    char response[] =  "HTTP/1.1 200 OK\r\n"
+                       "Content-Length: 17\r\n"
+                       "Content-Type: application/json\r\n"
+                       "\r\n"
+                       "{\"hello\":\"world\"}";
+    int len = strnlen(response, 128);
+
     // TODO: exit cleanly on hclose() or error
     while(1) {
         // TODO: actually read the request data
         int s;
         int rc = chrecv(ch, &s, sizeof(s), -1);
         errno_assert(rc == 0);
-        rc = bsend(s, "HTTP/1.1 200 OK\r\n\r\n", 19, -1);
-        errno_assert(rc == 0);
+        int64_t deadline = now() + 10;
+        rc = bsend(s, response, len, deadline);
         rc = hclose(s);
         errno_assert(rc == 0);
     }

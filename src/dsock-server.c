@@ -76,5 +76,6 @@ int main(int argc, char *argv[]) {
         int cr = go(dialogue(s));
         printf("%d\n", ++cnt);
         errno_assert(cr >= 0);
+        hclose(cr);
     }
 }
