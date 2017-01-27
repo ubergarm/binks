@@ -42,22 +42,37 @@
         }\
     } while(0)
 
+coroutine void listener(int ls, int ch) {
+    // TODO: exit cleanly on hclose() or error
+    while(1) {
+        int s = tcp_accept(ls, NULL, -1);
+        errno_assert(s >= 0);
+        int rc = chsend(ch, &s, sizeof(s), -1);
+        errno_assert(rc >= 0);
+    }
+}
+
 coroutine void worker(int ch) {
     char response[] =  "HTTP/1.1 200 OK\r\n"
                        "Content-Length: 17\r\n"
                        "Content-Type: application/json\r\n"
                        "\r\n"
                        "{\"hello\":\"world\"}";
-    int len = strnlen(response, 128);
+    int reslen = strnlen(response, 128);
+
+    char reqbuf[32];
+    int reqlen = 32;
 
     // TODO: exit cleanly on hclose() or error
     while(1) {
-        // TODO: actually read the request data
         int s;
         int rc = chrecv(ch, &s, sizeof(s), -1);
         errno_assert(rc == 0);
-        int64_t deadline = now() + 10;
-        rc = bsend(s, response, len, deadline);
+        // TODO: actually parse header properly
+        rc = brecv(s, reqbuf, reqlen, -1);
+        // TODO: send a proper response, not this fake
+        int64_t deadline = now() + 1;
+        rc = bsend(s, response, reslen, deadline);
         rc = hclose(s);
         errno_assert(rc == 0);
     }
@@ -89,18 +104,20 @@ int main(int argc, char *argv[]) {
     printf("INFO: Spinning up %d workers per %d thread(s)...\n", numworkers, 1);
 
     for(int i=0;i<numworkers;i++) {
-        // TODO: push these handles on a stack to garbage collect later
+        // TODO: push handles on a stack to garbage collect later
         int cr = go(worker(ch));
         errno_assert(cr >= 0);
     }
 
+    int cr = go(listener(ls, ch));
+    errno_assert(cr >= 0);
+
     // TODO listen for <control>-<c> signal and exit cleanly
     while(1) {
-        int s = tcp_accept(ls, NULL, -1);
-        errno_assert(s >= 0);
-        int rc = chsend(ch, &s, sizeof(s), -1);
-        errno_assert(rc >= 0);
+        int64_t deadline = now() + 1000;
+        msleep(deadline);
     }
+
     hclose(ch);
     // TODO: clean up coroutine handles
 }
