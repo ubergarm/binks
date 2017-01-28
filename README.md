@@ -47,7 +47,7 @@ Framework | Avg Latency `ms` | Stdev Latency `ms`| CPU % | Requests/sec | Notes
 `sanic / uvloop` | 19.5 | 6.74 | 58% | 10161 | .
 `h2o / mruby` | 8.38 | 3.32 | 100% | 23956 | *h2o has a minimum of 1x receiver 1x worker threads*
 `h2o / file` | 4.29 | 3.74 | 100% | 43576 | *h2o has a minimum of 1x receiver 1x worker threads*
-`fasthttp / golang:1.6` | 5.87 | 2.10| 33975 | `GOMAXPROCS=1` *still seems to use > 1 thread*
+`fasthttp / golang:1.6` | 5.87 | 2.10| 100% | 33975 | `GOMAXPROCS=1` *still seems to use > 1 thread*
 
 ## Summary
 These apples and oranges toy benchmarks shouldn't be used for anything serious. Also, since `h2o` uses a minimum of 2x threads, it should naturally return a better result. Finally, running `wrk` and a server on the *same* machine will likely affect server performance.
@@ -58,6 +58,7 @@ More experimentation is needed at this point, but this single threaded compariso
 One shouldn't draw any meaningful conclusions from this anecdotal toy benchmarking.
 
 However, if one were to do so anyway, then:
+
 1. If you want *max* speed server, try out `h2o`.
 2. If you want a *very fast* web framework, build it in `golang` on `fasthttp`.
 3. `libdill` and `dsock`, if used properly, show some promise.
