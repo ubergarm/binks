@@ -28,50 +28,50 @@ make clean && make && ./dsock-n-server 5555 10
 ## Benchmarking
 *NOTE* This is still a toy server that isn't properly parsing requests.
 
+#### Setup
+* All test apps running in Docker containers / network bridge
+* Configure server to use single worker thread (`h2o` uses 2x threads)
+* Respond with 200 OK `application/json` `{"hello":"world"}`.
+* Intel(R) Core(TM)2 Duo CPU P8600 @ 2.40GHz
+
+#### Command
 ```bash
 docker run --rm -it williamyeh/wrk -t2 -c200 -d30s "http://172.17.0.2:5555"
 ```
-#### dsock-n-server
-```
-Binks: Goin' Fast @ http://0.0.0.0:5555
-INFO: Spinning up 10 workers per 1 thread(s)...
 
-  2 threads and 200 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     8.04ms   82.04ms   1.67s    98.41%
-    Req/Sec    28.71k     1.13k   29.92k    88.17%
-  1714134 requests in 30.06s, 143.86MB read
-  Socket errors: connect 0, read 1714131, write 0, timeout 7
-Requests/sec:  57016.44
-Transfer/sec:      4.79MB
-```
+#### Results
 
-### [ubergarm/sanic-alpine](https://github.com/ubergarm/sanic-alpine)
-```
-Goin' Fast @ http://0.0.0.0:8000
+Framework | Avg Latency `ms` | Stdev Latency `ms`| CPU % | Requests/sec | Notes
+--- | --- | --- | --- | --- | ---
+`binks / http-server` | 5.53 | 51.58 | 97% | 10153 | ?read socket error every request?
+`sanic / uvloop` | 19.5 | 6.74 | 58% | 10161 | .
+`h2o / mruby` | 8.38 | 3.32 | 100% | 23956 | *h2o has a minimum of 1x receiver 1x worker threads*
+`h2o / file` | 4.29 | 3.74 | 100% | 43576 | *h2o has a minimum of 1x receiver 1x worker threads*
+`fasthttp / golang:1.6` | 5.87 | 2.10| 33975 | `GOMAXPROCS=1` *still seems to use > 1 thread*
 
-  2 threads and 200 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     5.88ms  819.88us  37.54ms   93.47%
-    Req/Sec    17.11k   670.00    18.18k    68.00%
-  1021887 requests in 30.10s, 132.54MB read
-Requests/sec:  33954.29
-Transfer/sec:      4.40MB
-```
 ## Summary
-This apples and oranges toy comparison is to suss out if a `libdill`+`dsock` based web framework has potential out-perform other existing solutions in terms of requests/second etc.
+These apples and oranges toy benchmarks shouldn't be used for anything serious. Also, since `h2o` uses a minimum of 2x threads, it should naturally return a better result. Finally, running `wrk` and a server on the *same* machine will likely affect server performance.
 
-More experimentation is needed at this point, but this single threaded comparison of `Binks` vs `sanic` holds *some* promise IMO.
+More experimentation is needed at this point, but this single threaded comparison of `binks` doesn't show much promise out of the gate on this hardware. A similar test on an Intel i7 showed proportionally better performance for `binks`. Also, this toy `binks` server doesn't even handle request properly showing read socket errors. Performance may improve assuming the requests are properly closed etc.
+
+## Conclusion
+One shouldn't draw any meaningful conclusions from this anecdotal toy benchmarking.
+
+However, if one were to do so anyway, then:
+1. If you want *max* speed server, try out `h2o`.
+2. If you want a *very fast* web framework, build it in `golang` on `fasthttp`.
+3. `libdill` and `dsock`, if used properly, show some promise.
 
 ## TODO
 - [x] Fake a simple request/response server with `libdill`+`dsock`.
 - [x] Use `wrk` to get early benchmarks.
-- [ ] Fiddle with compiler optimizations or at least remove debugging.
+- [x] Fiddle with compiler optimizations or at least remove debugging.
+- [x] See if `taskset -cp 0 <pid>` affects server performance
 - [ ] See how number of coroutines affects performance profile.
 - [ ] Actually receive full request
 - [ ] Actually parse request header/body.
 - [ ] If single thread performance is good, add multi-threading.
-- [ ] Benchmark `h2o` and a `go` based framework for comparison
+- [x] Benchmark `h2o` and a `go` based framework for comparison
 
 ## References
 * [sustrik/libdill](https://github.com/sustrik/libdill)
@@ -82,4 +82,5 @@ More experimentation is needed at this point, but this single threaded compariso
 * [h2o](http://blog.kazuhooku.com/2014/11/the-internals-h2o-or-how-to-write-fast.html)
 * [channelcat/sanic](https://github.com/channelcat/sanic)
 * [uvloop & libuv](https://magic.io/blog/uvloop-blazing-fast-python-networking/)
+* [valyala/fasthttp](https://github.com/valyala/fasthttp)
 * [motivation](https://github.com/sustrik/libmill/issues/161)
