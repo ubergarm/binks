@@ -26,14 +26,6 @@ RUN cd /usr/local/src && \
     make -j8 && \
     make install
 
-# install picohttpparser
-RUN cd /usr/local/src && \
-    git clone https://github.com/h2o/picohttpparser.git && \
-    cd picohttpparser && \
-    git submodule init && \
-    git submodule update && \
-    make test
-
 COPY . /app
 
 WORKDIR /app
