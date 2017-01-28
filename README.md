@@ -52,7 +52,7 @@ Framework | Avg Latency `ms` | Stdev Latency `ms`| CPU % | Requests/sec | Notes
 ## Summary
 These apples and oranges toy benchmarks shouldn't be used for anything serious. Also, since `h2o` uses a minimum of 2x threads, it should naturally return a better result. Finally, running `wrk` and a server on the *same* machine will likely affect server performance.
 
-More experimentation is needed at this point, but this single threaded comparison of `binks` doesn't show much promise out of the gate on this hardware. A similar test on an Intel i7 showed proportionally better performance for `binks`. Also, this toy `binks` server doesn't even handle request properly showing read socket errors. Performance may improve assuming the requests are properly closed etc.
+More experimentation is needed at this point, but this single threaded comparison of `binks` isn't performing as well as I had hoped. I blame this lack of performance on my poor incomplete incorrect implementation of `libdill`+`dsock` and not the underlying libs. A similar test on an Intel i7 showed proportionally better performance for `binks`. Also, this toy `binks` server doesn't even handle request properly showing read socket errors. Performance may improve assuming the requests are properly closed etc.
 
 ## Conclusion
 One shouldn't draw any meaningful conclusions from this anecdotal toy benchmarking.
@@ -61,18 +61,18 @@ However, if one were to do so anyway, then:
 
 1. If you want *max* speed server, try out `h2o`.
 2. If you want a *very fast* web framework, build it in `golang` on `fasthttp`.
-3. `libdill` and `dsock`, if used properly, show some promise.
+3. A proper `libdill`+`dsock` implementation should be more competitive, but will take a fair amount of development effort at this point IMO.
 
 ## TODO
 - [x] Fake a simple request/response server with `libdill`+`dsock`.
 - [x] Use `wrk` to get early benchmarks.
 - [x] Fiddle with compiler optimizations or at least remove debugging.
 - [x] See if `taskset -cp 0 <pid>` affects server performance
-- [ ] See how number of coroutines affects performance profile.
+- [x] See how number of coroutines affects performance profile.
+- [x] Benchmark `h2o` and a `go` based framework for comparison
 - [ ] Actually receive full request
 - [ ] Actually parse request header/body.
 - [ ] If single thread performance is good, add multi-threading.
-- [x] Benchmark `h2o` and a `go` based framework for comparison
 
 ## References
 * [sustrik/libdill](https://github.com/sustrik/libdill)
