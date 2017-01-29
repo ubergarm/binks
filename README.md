@@ -34,34 +34,41 @@ make clean && make && ./dsock-n-server 5555 10
 * Respond with 200 OK `application/json` `{"hello":"world"}`.
 * Intel(R) Core(TM)2 Duo CPU P8600 @ 2.40GHz
 
-#### Command
-```bash
-docker run --rm -it williamyeh/wrk -t2 -c200 -d30s "http://172.17.0.2:5555"
-```
-
 #### Results
+*Note*: `wrk` seems to show socket read errors which leads me to believe it is attempting to re-use TCP connections which assumes `KeepAlive`. This likely skewed the results of my first test, so I've removed those results for now and plan to use something other than `wrk` for benchmarking.
+
+Using `wrk`:
+```bash
+docker run --rm -it williamyeh/wrk -t2 -c20 -d30s "http://172.17.0.2:5555"
+```
 
 Framework | Avg Latency `ms` | Stdev Latency `ms`| CPU % | Requests/sec | Notes
 --- | --- | --- | --- | --- | ---
-`binks / http-server` | 5.53 | 51.58 | 97% | 10153 | ?read socket error every request?
-`sanic / uvloop` | 19.5 | 6.74 | 58% | 10161 | .
-`h2o / mruby` | 8.38 | 3.32 | 100% | 23956 | *h2o has a minimum of 1x receiver 1x worker threads*
-`h2o / file` | 4.29 | 3.74 | 100% | 43576 | *h2o has a minimum of 1x receiver 1x worker threads*
-`fasthttp / golang:1.6` | 5.87 | 2.10| 100% | 33975 | `GOMAXPROCS=1` *still seems to use > 1 thread*
+`binks / http-server` | x | x | x | x | `wrk` seems to show read errors if keep alive not implemented
+`sanic / uvloop` | x | x | x | x | -
+`h2o / mruby` | x | x | x | x | *h2o has a minimum of 1x receiver 1x worker threads*
+`h2o / file` | x | x | x | x | *h2o has a minimum of 1x receiver 1x worker threads*
+`fasthttp / golang:1.6` | x | x | x | x | `GOMAXPROCS=1` *still seems to use > 1 thread*
+
+Using `weighttp`:
+```bash
+docker run uzyexe/weighttp -n 100000 -c 10 -t 2 http://172.17.0.2:5555
+```
+
+Using `ab`:
+```bash
+TODO
+```
+
+*TODO*
 
 ## Summary
-These apples and oranges toy benchmarks shouldn't be used for anything serious. Also, since `h2o` uses a minimum of 2x threads, it should naturally return a better result. Finally, running `wrk` and a server on the *same* machine will likely affect server performance.
+These apples and oranges toy benchmarks shouldn't be used for anything serious. Also, since `h2o` uses a minimum of 2x threads, it should naturally return a better result. Running `wrk` and a server on the *same* machine will likely affect server performance. Finally, servers that support `Keep-Alive` will skew
 
-More experimentation is needed at this point, but this single threaded comparison of `binks` isn't performing as well as I had hoped. I blame this lack of performance on my poor incomplete incorrect implementation of `libdill`+`dsock` and not the underlying libs. A similar test on an Intel i7 showed proportionally better performance for `binks`. Also, this toy `binks` server doesn't even handle request properly showing read socket errors. Performance may improve assuming the requests are properly closed etc.
+More experimentation is needed at this point as there is more to the story than simply `resests/second` for trivial requests/responses.
 
 ## Conclusion
-One shouldn't draw any meaningful conclusions from this anecdotal toy benchmarking.
-
-However, if one were to do so anyway, then:
-
-1. If you want *max* speed server, try out `h2o`.
-2. If you want a *very fast* web framework, build it in `golang` on `fasthttp`.
-3. A proper `libdill`+`dsock` implementation should be more competitive, but will take a fair amount of development effort at this point IMO.
+There are many frameworks available in a variety of languages for implementing web-services, however `libdill`+`dsock` show promise for implementing efficient lowish level network related services with [structured concurrency](http://250bpm.com/blog:71) patterns.
 
 ## TODO
 - [x] Fake a simple request/response server with `libdill`+`dsock`.
@@ -70,6 +77,7 @@ However, if one were to do so anyway, then:
 - [x] See if `taskset -cp 0 <pid>` affects server performance
 - [x] See how number of coroutines affects performance profile.
 - [x] Benchmark `h2o` and a `go` based framework for comparison
+- [ ] Address KeepAlive and/or choose a different tool than `wrk`
 - [ ] Actually receive full request
 - [ ] Actually parse request header/body.
 - [ ] If single thread performance is good, add multi-threading.
@@ -84,4 +92,5 @@ However, if one were to do so anyway, then:
 * [channelcat/sanic](https://github.com/channelcat/sanic)
 * [uvloop & libuv](https://magic.io/blog/uvloop-blazing-fast-python-networking/)
 * [valyala/fasthttp](https://github.com/valyala/fasthttp)
+* [smallnest-go-web-framework-benchmark](https://github.com/smallnest/go-web-framework-benchmark)
 * [motivation](https://github.com/sustrik/libmill/issues/161)

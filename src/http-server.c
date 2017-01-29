@@ -83,7 +83,7 @@ cleanup:
 int main(int argc, char *argv[]) {
 
     int port = 5555;
-    int numworkers = 10;
+    int numworkers = 3;
     if(argc > 1)
         port = atoi(argv[1]);
     if(argc > 2)
