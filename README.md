@@ -60,6 +60,11 @@ Using `ab`:
 TODO
 ```
 
+Using `vegeta`:
+```bash
+TODO
+```
+
 *TODO*
 
 ## Summary
@@ -93,4 +98,5 @@ There are many frameworks available in a variety of languages for implementing w
 * [uvloop & libuv](https://magic.io/blog/uvloop-blazing-fast-python-networking/)
 * [valyala/fasthttp](https://github.com/valyala/fasthttp)
 * [smallnest-go-web-framework-benchmark](https://github.com/smallnest/go-web-framework-benchmark)
+* [tsenart/vegeta](https://github.com/tsenart/vegeta)
 * [motivation](https://github.com/sustrik/libmill/issues/161)
