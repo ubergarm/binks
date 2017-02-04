@@ -61,20 +61,33 @@ coroutine void worker(int ch) {
                 printf("http_recvfield() errno = %d\n", errno);
                 goto cleanup;
             }
-            printf("%s %s\n", name, value);
+            printf("%s: %s\n", name, value);
         }
         printf("\n");
 
         /* receive data if content length specified */
         /* TODO */
 
-        /* send reply */
+        /* send response status */
         rc = http_sendstatus(hs, 200, "OK", -1);
         if( rc != 0) {
             printf("http_sendstatus() errno = %d\n", errno);
             goto cleanup;
         }
+        /* send response fields */
+        rc = http_sendfield(hs, "Connection", "close", -1);
+        dsock_assert(rc == 0);
+        rc = http_sendfield(hs, "Server", "Binks/0.1-alpha", -1);
+        dsock_assert(rc == 0);
+        rc = http_sendfield(hs, "Content-Type", "application/json", -1);
+        dsock_assert(rc == 0);
+        rc = http_sendfield(hs, "Content-Length", "17", -1);
+        dsock_assert(rc == 0);
         rc = http_done(hs, -1);
+        dsock_assert(rc == 0);
+        /* send response data */
+        char response[] = "{'hello':'world'}";
+        rc = bsend(s, response, 17, -1);
         dsock_assert(rc == 0);
 
 cleanup:
@@ -109,6 +122,7 @@ int main(int argc, char *argv[]) {
         int cr = go(worker(ch));
         dsock_assert(cr >= 0);
     }
+    printf("\n");
 
     while(1) {
         /* accept incoming connections */
