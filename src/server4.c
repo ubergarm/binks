@@ -1,6 +1,5 @@
 /*
 
-  Copyright (c) 2016 Martin Sustrik
   Copyright (c) 2017 John W. Leimgruber III
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -26,71 +25,98 @@
 #include <libdill.h>
 #include <assert.h>
 #include <errno.h>
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 #include "dsock.h"
+#include "/usr/local/src/dsock/utils.h"
 
-coroutine void dialogue(int s) {
+coroutine void worker(int ch) {
+    while(1) {
+        int s;
+        int rc = chrecv(ch, &s, sizeof(s), -1);
+        dsock_assert(rc == 0);
+        /* start http protocol */
+        int hs = http_start(s);
+        dsock_assert(hs >= 0);
 
-    int64_t deadline;
-    int rc;
-    // read up to xxx bytes or return after xxx msec
-    deadline = now() + 1000;
-    char inbuf[41];
-    rc = brecv(s, inbuf, sizeof(inbuf), deadline);
-    inbuf[40] = 0;
-    if (errno != 0) {
-        printf("errno: (%d): %s\n", errno, strerror(errno));
-    }
-    printf("%s\n", inbuf);
+        /* receive http request header */
+        char cmd[16];
+        char url[16];
+        rc = http_recvrequest(hs, cmd, sizeof(cmd), url, sizeof(url), -1);
+        if( rc != 0) {
+            printf("http_recvrequest() errno = %d\n", errno);
+            goto cleanup;
+        }
+        printf("%s %s\n", cmd, url);
 
+        /* receive all fields */
+        while(1) {
+            char name[32];
+            char value[32];
+            rc = http_recvfield(hs, name, sizeof(name), value, sizeof(value), -1);
+            if( rc == -1 && errno == EPIPE ) break;
+            if( rc != 0) {
+                printf("http_recvfield() errno = %d\n", errno);
+                goto cleanup;
+            }
+            printf("%s %s\n", name, value);
+        }
+        printf("\n");
 
+        /* receive data if content length specified */
+        /* TODO */
 
-    // fake a response in the next xxx msec or die trying
-    deadline = now() + 1000;
-    rc = bsend(s, "HTTP/1.1 200 OK\r\n", 17, deadline);
-    if(rc != 0) goto cleanup;
-    rc = bsend(s, "Content-Type: text/plain\r\n", 26, deadline);
-    if(rc != 0) goto cleanup;
-    rc = bsend(s, "Content-Length: 11\r\n", 20, deadline);
-    if(rc != 0) goto cleanup;
-    rc = bsend(s, "Connection: close\r\n", 19, deadline);
-    if(rc != 0) goto cleanup;
-    rc = bsend(s, "\r\n", 2, deadline);
-    if(rc != 0) goto cleanup;
-    rc = bsend(s, "hello world", 11, deadline);
-    if(rc != 0) goto cleanup;
+        /* send reply */
+        rc = http_sendstatus(hs, 200, "OK", -1);
+        if( rc != 0) {
+            printf("http_sendstatus() errno = %d\n", errno);
+            goto cleanup;
+        }
 
 cleanup:
-    rc = hclose(s);
-    assert(rc == 0);
+        rc = http_done(hs, -1);
+        dsock_assert(rc == 0);
+        rc = hclose(s);
+        dsock_assert(rc == 0);
+    }
 }
 
 int main(int argc, char *argv[]) {
 
     int port = 5555;
+    int numworkers = 3;
     if(argc > 1)
         port = atoi(argv[1]);
+    if(argc > 2)
+        numworkers = atoi(argv[2]);
 
+    /* open TCP listener on specified socket */
     ipaddr addr;
     int rc = ipaddr_local(&addr, NULL, port, 0);
-    assert(rc == 0);
+    dsock_assert(rc == 0);
     int ls = tcp_listen(&addr, 10);
-    if(ls < 0) {
-        perror("Can't open listening socket");
-        return 1;
+    dsock_assert(ls >= 0);
+
+    /* create channel to push handles to workers */
+    int ch = chmake(sizeof(int));
+    dsock_assert(ch >= 0);
+
+    /* spin up specified number of worker coroutines < ~32k */
+    for(int i=0;i<numworkers;i++) {
+        printf("Starting coroutine: %d\n", i+1);
+        int cr = go(worker(ch));
+        dsock_assert(cr >= 0);
     }
 
-    unsigned int cnt=0;
     while(1) {
+        /* accept incoming connections */
         int s = tcp_accept(ls, NULL, -1);
-        assert(s >= 0);
-        int cr = go(dialogue(s));
-        assert(cr >= 0);
-        printf("Loop: %d, s=%d \n", ++cnt, s);
+        dsock_assert(s >= 0);
+        /* push incoming connection handle to channel */
+        int rc = chsend(ch, &s, sizeof(s), -1);
+        dsock_assert(rc >= 0);
     }
 }
 
