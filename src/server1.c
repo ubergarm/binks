@@ -30,54 +30,32 @@
 #include <unistd.h>
 
 #include "dsock.h"
+/* for dsock_assert() */
 #include "/usr/local/src/dsock/utils.h"
-
-coroutine void worker(int ch) {
-    while(1) {
-        int s;
-        int rc = chrecv(ch, &s, sizeof(s), -1);
-        dsock_assert(rc == 0);
-        /* print message to console then close socket */
-        printf("Accepted incoming TCP connection.\n");
-        rc = hclose(s);
-        dsock_assert(rc == 0);
-    }
-}
 
 int main(int argc, char *argv[]) {
 
     int port = 5555;
-    int numworkers = 3;
     if(argc > 1)
         port = atoi(argv[1]);
-    if(argc > 2)
-        numworkers = atoi(argv[2]);
 
-    /* open TCP listener on specified socket */
     ipaddr addr;
     int rc = ipaddr_local(&addr, NULL, port, 0);
     dsock_assert(rc == 0);
     int ls = tcp_listen(&addr, 10);
-    dsock_assert(ls >= 0);
-
-    /* create channel to push handles to workers */
-    int ch = chmake(sizeof(int));
-    dsock_assert(ch >= 0);
-
-    /* spin up specified number of worker coroutines < ~32k */
-    for(int i=0;i<numworkers;i++) {
-        printf("Starting coroutine: %d\n", i+1);
-        int cr = go(worker(ch));
-        dsock_assert(cr >= 0);
+    if(ls < 0) {
+        perror("Can't open listening socket");
+        return 1;
     }
 
     while(1) {
-        /* accept incoming connections */
+        /* listen for incoming connections */
         int s = tcp_accept(ls, NULL, -1);
         dsock_assert(s >= 0);
-        /* push incoming connection handle to channel */
-        int rc = chsend(ch, &s, sizeof(s), -1);
-        dsock_assert(rc >= 0);
+        /* print message to console then close socket */
+        printf("Accepted incoming TCP connection.\n");
+        rc = hclose(s);
+        dsock_assert(rc == 0);
     }
 }
 
