@@ -8,7 +8,7 @@ RUN apk add --no-cache git \
 
 RUN mkdir -p /usr/local/src
 
-# install libdill (skip make check as tests/threads *sometimes* fails WTF?)
+# install libdill (skip make check)
 RUN cd /usr/local/src && \
     git clone https://github.com/sustrik/libdill.git && \
     cd libdill && \
@@ -17,7 +17,7 @@ RUN cd /usr/local/src && \
     make -j8 && \
     make install
 
-# install libdsock (skip make check as tests/bthrottler sometimes fails???)
+# install libdsock (skip make check)
 RUN cd /usr/local/src && \
     git clone https://github.com/sustrik/dsock.git && \
     cd dsock && \
