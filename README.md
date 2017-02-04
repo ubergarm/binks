@@ -60,9 +60,9 @@ Using `ab`:
 TODO
 ```
 
-Using `vegeta`:
+Using [vegeta](https://github.com/tsenart/vegeta/releases):
 ```bash
-TODO
+echo "GET http://localhost:5555/" | vegeta attack -keepalive 0 -cpus 2 -rate 10000 -duration=5s | tee results.bin | vegeta report
 ```
 
 *TODO*

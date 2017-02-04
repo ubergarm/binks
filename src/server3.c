@@ -57,10 +57,10 @@ coroutine void worker(int ch) {
             printf("http_sendstatus() errno = %d\n", errno);
             goto cleanup;
         }
-
-cleanup:
         rc = http_done(hs, -1);
         dsock_assert(rc == 0);
+
+cleanup:
         rc = hclose(s);
         dsock_assert(rc == 0);
     }
