@@ -1,6 +1,6 @@
 /*
 
-  Copyright (c) 2016 Martin Sustrik
+  Copyright (c) 2017 John W. Leimgruber III
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"),
@@ -28,48 +28,71 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "dsock.h"
+#include "/usr/local/src/dsock/utils.h"
 
-coroutine void dialogue(int s) {
-    int64_t deadline = now() + 10000;
-    int rc = msend(s, "What's your name?", 17, deadline);
-    if(rc != 0) goto cleanup;
-    char inbuf[256];
-    ssize_t sz = mrecv(s, inbuf, sizeof(inbuf), deadline);
-    if(sz < 0) goto cleanup;
-    inbuf[sz] = 0;
-    char outbuf[256];
-    rc = snprintf(outbuf, sizeof(outbuf), "Hello, %s!", inbuf);
-    rc = msend(s, outbuf, rc, deadline);
-    if(rc != 0) goto cleanup;
-cleanup:
-    rc = hclose(s);
-    assert(rc == 0);
+static volatile int keepRunning = 1;
+
+void exit_handler(int na) {
+    printf("Shutting down server...\n");
+    keepRunning = 0;
+}
+
+coroutine void worker(int ch) {
+    while(1) {
+        int s;
+        int rc = chrecv(ch, &s, sizeof(s), -1);
+        if(rc == -1 && errno == EPIPE) break;
+        dsock_assert(rc == 0);
+        /* print message to console then close socket */
+        printf("Accepted incoming TCP connection.\n");
+        rc = hclose(s);
+        dsock_assert(rc == 0);
+    }
 }
 
 int main(int argc, char *argv[]) {
 
     int port = 5555;
+    int numworkers = 3;
     if(argc > 1)
         port = atoi(argv[1]);
+    if(argc > 2)
+        numworkers = atoi(argv[2]);
 
+    /* register handler for <control><c> signal */
+    signal(SIGINT, exit_handler);
+
+    /* open TCP listener on specified socket */
     ipaddr addr;
     int rc = ipaddr_local(&addr, NULL, port, 0);
-    assert(rc == 0);
+    dsock_assert(rc == 0);
     int ls = tcp_listen(&addr, 10);
-    if(ls < 0) {
-        perror("Can't open listening socket");
-        return 1;
+    dsock_assert(ls >= 0);
+
+    /* create channel to push handles to workers */
+    int ch = chmake(sizeof(int));
+    dsock_assert(ch >= 0);
+
+    /* spin up specified number of worker coroutines < ~32k */
+    for(int i=0;i<numworkers;i++) {
+        printf("Starting coroutine: %d\n", i+1);
+        int cr = go(worker(ch));
+        dsock_assert(cr >= 0);
     }
 
-    while(1) {
+    while(keepRunning) {
+        /* accept incoming connections */
         int s = tcp_accept(ls, NULL, -1);
-        assert(s >= 0);
-        s = crlf_start(s);
-        assert(s >= 0);
-        int cr = go(dialogue(s));
-        assert(cr >= 0);
+        dsock_assert(s >= 0);
+        /* push incoming connection handle to channel */
+        int rc = chsend(ch, &s, sizeof(s), -1);
+        dsock_assert(rc >= 0);
     }
+
+    /* cleanup */
+    printf("Cleaning up...\n");
 }
 
