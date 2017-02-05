@@ -68,7 +68,7 @@ Transfer/sec:      3.67MB
 ```
 ## Summary
 I'm still learning how to use `libdill`+`dsock` and these examples
-may crash, act screwy, and likely are note a good reference
+may crash, act screwy, and likely are not a good reference
 implementation. Cheers!
 
 ## References
